@@ -2,15 +2,9 @@ from neo4j import GraphDatabase, exceptions
 
 class Neo4jCRUD:
     def __init__(self):
-        """
-        Inicializa la conexión con la base de datos Neo4j.
-        :param uri: URI de la instancia de Neo4j (ej. "neo4j://localhost:7687" o "bolt://localhost:7687")
-        :param user: Nombre de usuario de Neo4j
-        :param password: Contraseña de Neo4j
-        """
         try:
             self._driver = GraphDatabase.driver(uri = "bolt://localhost:7687", auth=("neo4j", "12345678"))
-            self._database = "vocacionescursos"
+            self._database = "vocacionescursos1"
             self._driver.verify_connectivity()
             print("Conexión a Neo4j establecida exitosamente.")
         except exceptions.AuthError as e:
@@ -36,9 +30,9 @@ class Neo4jCRUD:
         if self._driver is None:
             print("No hay conexión activa a Neo4j.")
             return None
-        with self._driver.session() as session:
+        with self._driver.session(database=self._database) as session:
             try:
-                return session.write_transaction(tx_function, **kwargs)
+                return session.execute_write(tx_function, **kwargs)
             except exceptions.ConstraintError as e:
                 print(f"Error de restricción (ConstraintError): {e}")
                 return None
@@ -53,9 +47,9 @@ class Neo4jCRUD:
         if self._driver is None:
             print("No hay conexión activa a Neo4j.")
             return []
-        with self._driver.session() as session:
+        with self._driver.session(database=self._database) as session:
             try:
-                return session.read_transaction(tx_function, **kwargs)
+                return session.execute_read(tx_function, **kwargs)
             except Exception as e:
                 print(f"Error durante la transacción de lectura: {e}")
                 return []
@@ -331,21 +325,7 @@ class Neo4jCRUD:
         return self._ejecutar_lectura(self._obtener_cursos_anteriores_tx, nombre_curso_actual=nombre_curso_actual)
     
     def crear_vocacion_con_ramas_desde_dict(self, datos_vocacion_completa):
-        """
-        Crea una Vocacion y sus ramas de Cursos a partir de un diccionario.
-        Toda la operación se ejecuta en una única transacción.
-        :param datos_vocacion_completa: Diccionario con la estructura:
-            {
-                "vocacion_nombre": "Nombre Vocacion",
-                "cursos_rama": [
-                    { "nombre": "Curso1", "dificultad": "Fácil", 
-                      "siguientes": [ { "nombre": "Curso1.1", ... } ] 
-                    },
-                    { "nombre": "Curso2", "dificultad": "Fácil" }
-                ]
-            }
-        :return: Diccionario con el resultado o None si hay error.
-        """
+
         if self._driver is None:
             print("Error: No hay conexión activa a Neo4j.")
             return None
@@ -408,7 +388,7 @@ class Neo4jCRUD:
         # Ejecutar la función transaccional
         with self._driver.session(database=self._database) as session:
             try:
-                resultado = session.write_transaction(_tx_crear_estructura_completa, datos_voc=datos_vocacion_completa)
+                resultado = session.execute_write(_tx_crear_estructura_completa, datos_voc=datos_vocacion_completa)
                 print(f"Resultado final del procesamiento de '{datos_vocacion_completa.get('vocacion_nombre')}': {resultado['status']}")
                 return resultado
             except ValueError as ve:
@@ -442,7 +422,6 @@ if __name__ == "__main__":
     else:
         print("\n--- Iniciando Demo CRUD Neo4j ---")
 
-        # Opcional: Añadir constraints para unicidad (ejecutar una sola vez o verificar si existen)
         # try:
         #     gestor_neo4j._ejecutar_transaccion(lambda tx: tx.run("CREATE CONSTRAINT vocacion_nombre_unique IF NOT EXISTS FOR (v:Vocacion) REQUIRE v.nombre IS UNIQUE"))
         #     gestor_neo4j._ejecutar_transaccion(lambda tx: tx.run("CREATE CONSTRAINT curso_nombre_unique IF NOT EXISTS FOR (c:Curso) REQUIRE c.nombre IS UNIQUE"))
@@ -450,151 +429,290 @@ if __name__ == "__main__":
         # except Exception as e:
         #     print(f"Advertencia al crear constraints (pueden ya existir): {e}")
 
-         # Definición del diccionario para una vocación y su rama de cursos
-        datos_para_carga_masiva = [
-        {
-            "vocacion_nombre": "Ingeniería de Software", # Tomado de datos.vocaciones.json
-            "cursos_rama": [
-                { 
-                    "nombre": "Introducción al Desarrollo Web: HTML, CSS y JavaScript", # Tomado de datos.cursos.json
-                    "dificultad": "Principiante", # Tomado de datos.cursos.json (nivel)
-                    "siguientes": [
-                        {
-                            "nombre": "Desarrollo de Interfaces con React.js", 
-                            "dificultad": "Intermedio",
-                            "siguientes": [
-                                { "nombre": "Backend con Node.js, Express y MongoDB", "dificultad": "Intermedio" },
-                                { "nombre": "Introducción a DevOps: Cultura, Prácticas y Herramientas", "dificultad": "Intermedio" }
-                            ]
-                        },
-                        {
-                            "nombre": "Python Esencial para Inteligencia Artificial", # Reutilizado para otra sub-rama
-                            "dificultad": "Principiante",
-                            "siguientes": [
-                                 { "nombre": "Machine Learning: De Cero a Práctico", "dificultad": "Principiante" }
-                            ]
-                        }
-                    ]
-                },
-                {
-                    "nombre": "Gestión Ágil de Proyectos con Scrum y Kanban",
-                    "dificultad": "Todos los niveles" 
-                }
-            ]
-        },
-        {
-            "vocacion_nombre": "Especialista en Ciberseguridad", # Tomado de datos.vocaciones.json
-            "cursos_rama": [
-                {
-                    "nombre": "Introducción a la Ciberseguridad",
-                    "dificultad": "Principiante",
-                    "siguientes": [
-                        { 
-                            "nombre": "Ethical Hacking y Pruebas de Penetración", 
-                            "dificultad": "Avanzado"
-                        },
-                        {
-                            "nombre": "Cloud Computing con AWS: Fundamentos y Servicios Clave", # Curso relevante para seguridad en la nube
-                            "dificultad": "Principiante",
-                            "siguientes": [
-                                 # Podríamos añadir un curso más avanzado de seguridad en AWS aquí si existiera
-                            ]
-                        }
-                    ]
-                },
-                {
-                    "nombre": "Blockchain y Criptomonedas: Fundamentos y Aplicaciones", # Relevante para seguridad
-                    "dificultad": "Intermedio"
-                }
-            ]
-        },
-        {
-            "vocacion_nombre": "Diseño Gráfico", # Tomado de datos.vocaciones.json
-            "cursos_rama": [
-                {
-                    "nombre": "Fundamentos del Diseño de Experiencia de Usuario (UX)",
-                    "dificultad": "Principiante",
-                    "siguientes": [
-                        {
-                            "nombre": "Diseño de Interfaces (UI) con Figma",
-                            "dificultad": "Intermedio",
-                            "siguientes": [
-                                {"nombre": "Fotografía Digital Profesional", "dificultad": "Todos los niveles"} 
-                                # La fotografía puede complementar el diseño UI/UX
-                            ]
-                        }
-                    ]
-                },
-                {
-                    "nombre": "Marketing Digital Integral: SEO, SEM y Redes Sociales", # Para diseñadores que quieren promocionarse
-                    "dificultad": "Principiante"
-                }
-            ]
-        },
-        {
-            "vocacion_nombre": "Desarrollo de Videojuegos Indie", # Tomado de datos.vocaciones.json
-            "cursos_rama": [
-                {
-                    "nombre": "Desarrollo de Videojuegos 2D con Unity",
-                    "dificultad": "Principiante",
-                    "siguientes": [
-                        {
-                            "nombre": "Desarrollo de Videojuegos 3D con Unreal Engine", # Progresión natural
-                            "dificultad": "Intermedio",
-                            "siguientes": [
-                                # Aquí podría ir un curso de "Optimización Avanzada de Juegos" o "Diseño Narrativo para Videojuegos"
-                            ]
-                        }
-                    ]
-                },
-                {
-                    "nombre": "Producción Musical y Diseño de Sonido", # Vocación relacionada que puede tener cursos en común o ser complementaria
-                                                                # Para este ejemplo, lo pongo como un curso que un dev de juegos podría tomar.
-                                                                # Idealmente, "Producción Musical..." sería otra vocación con su propia rama.
-                                                                # Pero para mostrar flexibilidad, lo añado aquí como un curso.
-                    "dificultad": "Intermedio" # Asumiendo que existe un curso con este nombre y dificultad.
-                                          # Si no, se crearía con esta dificultad.
-                }
-            ]
-        },
-        {
-            "vocacion_nombre": "Ciencia de Datos", # Vocación creada en el script de Neo4j
-            "cursos_rama": [
-                {
-                    "nombre": "Python para Ciencia de Datos: NumPy, Pandas y Matplotlib",
-                    "dificultad": "Principiante",
-                    "siguientes": [
-                        {
-                            "nombre": "Machine Learning Práctico con Scikit-learn",
-                            "dificultad": "Intermedio",
-                            "siguientes": [
-                                {
-                                    "nombre": "Deep Learning con TensorFlow y Keras",
-                                    "dificultad": "Avanzado",
-                                    "siguientes": [
-                                        {"nombre": "Inteligencia Artificial Generativa", "dificultad": "Avanzado"},
-                                        {"nombre": "Visión por Computadora: Detección y Segmentación", "dificultad": "Avanzado"}
-                                    ]
-                                },
-                                {
-                                    "nombre": "Análisis y Predicción de Series Temporales",
-                                    "dificultad": "Intermedio"
-                                }
-                            ]
-                        },
-                        {
-                            "nombre": "SQL para Análisis de Datos: De Básico a Avanzado",
-                            "dificultad": "Intermedio"
-                        }
-                    ]
-                },
-                {
-                    "nombre": "Ética y Responsabilidad en Inteligencia Artificial",
-                    "dificultad": "Todos los niveles"
-                }
-            ]
-        }
-    ]
+
+        datos_para_carga_masiva_neo4j = [
+            {
+                "vocacion_nombre": "Ingeniería de Software", # De datos.vocaciones.json
+                "cursos_rama": [
+                    {
+                        "nombre": "Introducción al Desarrollo Web: HTML, CSS y JavaScript", # De datos.cursos.json
+                        "dificultad": "Principiante", # De datos.cursos.json (nivel)
+                        "siguientes": [
+                            {
+                                "nombre": "Desarrollo de Interfaces con React.js",
+                                "dificultad": "Intermedio",
+                                "siguientes": [
+                                    { "nombre": "Backend con Node.js, Express y MongoDB", "dificultad": "Intermedio" },
+                                    { "nombre": "Introducción a DevOps: Cultura, Prácticas y Herramientas", "dificultad": "Intermedio" }
+                                ]
+                            },
+                            {
+                                "nombre": "Python Esencial para Inteligencia Artificial",
+                                "dificultad": "Principiante",
+                                "siguientes": [
+                                     { "nombre": "Machine Learning: De Cero a Práctico", "dificultad": "Principiante" },
+                                     { "nombre": "SQL para Análisis de Datos: De Básico a Avanzado", "dificultad": "Intermedio"}
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "nombre": "Gestión Ágil de Proyectos con Scrum y Kanban",
+                        "dificultad": "Todos los niveles"
+                    },
+                    {
+                        "nombre": "Cloud Computing con AWS: Fundamentos y Servicios Clave",
+                        "dificultad": "Principiante"
+                    }
+                ]
+            },
+            {
+                "vocacion_nombre": "Especialista en Ciberseguridad", # De datos.vocaciones.json
+                "cursos_rama": [
+                    {
+                        "nombre": "Introducción a la Ciberseguridad",
+                        "dificultad": "Principiante",
+                        "siguientes": [
+                            {
+                                "nombre": "Ethical Hacking y Pruebas de Penetración",
+                                "dificultad": "Avanzado"
+                            },
+                            {
+                                "nombre": "Cloud Computing con AWS: Fundamentos y Servicios Clave",
+                                "dificultad": "Principiante",
+                                "siguientes": [
+                                    # Podría ir un curso de "Seguridad Avanzada en AWS"
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "nombre": "Blockchain y Criptomonedas: Fundamentos y Aplicaciones",
+                        "dificultad": "Intermedio"
+                    }
+                ]
+            },
+            {
+                "vocacion_nombre": "Diseño Gráfico", # De datos.vocaciones.json
+                "cursos_rama": [
+                    {
+                        "nombre": "Fundamentos del Diseño de Experiencia de Usuario (UX)",
+                        "dificultad": "Principiante",
+                        "siguientes": [
+                            {
+                                "nombre": "Diseño de Interfaces (UI) con Figma",
+                                "dificultad": "Intermedio",
+                                "siguientes": [
+                                    {"nombre": "Fotografía Digital Profesional", "dificultad": "Todos los niveles"}
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "nombre": "Marketing Digital Integral: SEO, SEM y Redes Sociales",
+                        "dificultad": "Principiante"
+                    },
+                    {
+                        "nombre": "Ilustración Digital y Concept Art para Videojuegos y Cine", # Vocación relacionada
+                        "dificultad": "Intermedio" # Asumiendo que existe un curso con este nombre
+                    }
+                ]
+            },
+            {
+                "vocacion_nombre": "Marketing Digital", # De datos.vocaciones.json
+                "cursos_rama": [
+                    {
+                        "nombre": "Marketing Digital Integral: SEO, SEM y Redes Sociales",
+                        "dificultad": "Principiante",
+                        "siguientes": [
+                            {
+                                "nombre": "SQL para Análisis de Datos: De Básico a Avanzado",
+                                "dificultad": "Intermedio"
+                            },
+                            {
+                                "nombre": "Fundamentos del Diseño de Experiencia de Usuario (UX)", # Para entender al cliente
+                                "dificultad": "Principiante"
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "vocacion_nombre": "Aprender programación desde cero", # De datos.vocaciones.json
+                "cursos_rama": [
+                    {
+                        "nombre": "Introducción al Desarrollo Web: HTML, CSS y JavaScript",
+                        "dificultad": "Principiante",
+                        "siguientes": [
+                            {
+                                "nombre": "Python Esencial para Inteligencia Artificial",
+                                "dificultad": "Principiante",
+                                "siguientes": [
+                                    { "nombre": "Machine Learning: De Cero a Práctico", "dificultad": "Principiante" }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "nombre": "SQL para Análisis de Datos: De Básico a Avanzado",
+                        "dificultad": "Intermedio"
+                    },
+                    {
+                        "nombre": "Desarrollo de Videojuegos 2D con Unity", # Otra opción para aprender programación
+                        "dificultad": "Principiante"
+                    }
+                ]
+            },
+            {
+                "vocacion_nombre": "Desarrollo de Videojuegos Indie", # De datos.vocaciones.json
+                "cursos_rama": [
+                    {
+                        "nombre": "Desarrollo de Videojuegos 2D con Unity",
+                        "dificultad": "Principiante",
+                        "siguientes": [
+                            {
+                                "nombre": "Desarrollo de Videojuegos 3D con Unreal Engine",
+                                "dificultad": "Intermedio",
+                                "siguientes": [
+                                     {"nombre": "Ilustración Digital y Concept Art para Videojuegos y Cine", "dificultad": "Intermedio"},
+                                     {"nombre": "Producción Musical y Diseño de Sonido", "dificultad": "Intermedio"}
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "nombre": "Animación 2D y 3D para Cine y Publicidad", # Habilidad complementaria
+                        "dificultad": "Intermedio" # Asumiendo que existe un curso con este nombre
+                    }
+                ]
+            },
+            {
+                "vocacion_nombre": "Ciencia de Datos", # De datos.vocaciones.json (o creado en script)
+                "cursos_rama": [
+                    {
+                        "nombre": "Python para Ciencia de Datos: NumPy, Pandas y Matplotlib",
+                        "dificultad": "Principiante",
+                        "siguientes": [
+                            {
+                                "nombre": "Machine Learning Práctico con Scikit-learn",
+                                "dificultad": "Intermedio",
+                                "siguientes": [
+                                    {
+                                        "nombre": "Deep Learning con TensorFlow y Keras",
+                                        "dificultad": "Avanzado",
+                                        "siguientes": [
+                                            {"nombre": "Inteligencia Artificial Generativa", "dificultad": "Avanzado"},
+                                            {"nombre": "Visión por Computadora: Detección y Segmentación", "dificultad": "Avanzado"},
+                                            {"nombre": "Procesamiento del Lenguaje Natural (PLN) con Python", "dificultad": "Intermedio"}
+                                        ]
+                                    },
+                                    {
+                                        "nombre": "Análisis y Predicción de Series Temporales",
+                                        "dificultad": "Intermedio"
+                                    },
+                                    {
+                                        "nombre": "Big Data e Inteligencia Artificial con Spark",
+                                        "dificultad": "Avanzado"
+                                    }
+                                ]
+                            },
+                            {
+                                "nombre": "SQL para Análisis de Datos: De Básico a Avanzado",
+                                "dificultad": "Intermedio"
+                            }
+                        ]
+                    },
+                    {
+                        "nombre": "Ética y Responsabilidad en Inteligencia Artificial",
+                        "dificultad": "Todos los niveles"
+                    },
+                    {
+                        "nombre": "Inteligencia Artificial Explicable (XAI)",
+                        "dificultad": "Avanzado"
+                    }
+                ]
+            },
+            {
+                "vocacion_nombre": "Desarrollar un emprendimiento digital", # De datos.vocaciones.json
+                "cursos_rama": [
+                    {
+                        "nombre": "Introducción al Desarrollo Web: HTML, CSS y JavaScript", # Base para muchos emprendimientos
+                        "dificultad": "Principiante",
+                        "siguientes": [
+                            {"nombre": "Backend con Node.js, Express y MongoDB", "dificultad": "Intermedio"}
+                        ]
+                    },
+                    {
+                        "nombre": "Marketing Digital Integral: SEO, SEM y Redes Sociales",
+                        "dificultad": "Principiante"
+                    },
+                    {
+                        "nombre": "Gestión Ágil de Proyectos con Scrum y Kanban",
+                        "dificultad": "Todos los niveles"
+                    },
+                    {
+                        "nombre": "Cloud Computing con AWS: Fundamentos y Servicios Clave", # Para desplegar
+                        "dificultad": "Principiante"
+                    }
+                ]
+            },
+            {
+                "vocacion_nombre": "Obtener una certificación internacional (como AWS o TOEFL)", # De datos.vocaciones.json
+                "cursos_rama": [
+                    {
+                        "nombre": "Cloud Computing con AWS: Fundamentos y Servicios Clave",
+                        "dificultad": "Principiante",
+                        "siguientes": [
+                            # Aquí irían cursos más avanzados de AWS si existieran en datos.cursos.json
+                            # Por ejemplo: "AWS Certified Solutions Architect - Associate"
+                        ]
+                    }
+                    # Para TOEFL, se necesitarían cursos de preparación de inglés específicos
+                ]
+            },
+            {
+                "vocacion_nombre": "Dominar el diseño gráfico",
+                "cursos_rama": [
+                    {
+                        "nombre": "Fundamentos del Diseño de Experiencia de Usuario (UX)",
+                        "dificultad": "Principiante"
+                    },
+                    {
+                        "nombre": "Diseño de Interfaces (UI) con Figma",
+                        "dificultad": "Intermedio"
+                    },
+                    {
+                        "nombre": "Fotografía Digital Profesional",
+                        "dificultad": "Todos los niveles"
+                    },
+                    {
+                        "nombre": "Ilustración Digital y Concept Art para Videojuegos y Cine",
+                        "dificultad": "Intermedio" 
+                    }
+                ]
+            }
+        ]
+
+        #if gestor_neo4j._driver:
+        #    try:
+        #        with gestor_neo4j._driver.session() as s:
+        #            s.run("CREATE CONSTRAINT vocacion_nombre_unique IF NOT EXISTS FOR (v:Vocacion) REQUIRE v.nombre IS UNIQUE")
+        #            s.run("CREATE CONSTRAINT curso_nombre_unique IF NOT EXISTS FOR (c:Curso) REQUIRE c.nombre IS UNIQUE")
+        #            print("Constraints de unicidad para Vocacion.nombre y Curso.nombre aseguradas.")
+        #    except Exception as e_constraint:
+        #        print(f"Advertencia al crear constraints (pueden ya existir o error de permisos): {e_constraint}")
+
+        #    for vocacion_data in datos_para_carga_masiva_neo4j:
+        #        print(f"\n--- Cargando Vocación: {vocacion_data['vocacion_nombre']} ---")
+        #        resultado = gestor_neo4j.crear_vocacion_con_ramas_desde_dict(vocacion_data)
+        #        if resultado:
+        #            print(f"Carga para '{vocacion_data['vocacion_nombre']}' completada con estado: {resultado.get('status')}")
+        #        else:
+        #            print(f"Error al cargar la vocación: {vocacion_data['vocacion_nombre']}")
+        #            gestor_neo4j.close()
+        #else:
+        #    print("No se pudo conectar a Neo4j para la carga masiva.")
+
         """
         print(f"\nIntentando crear la vocación y ramas para: '{datos_vocacion_ia['vocacion_nombre']}'")
         resultado_creacion = gestor_neo4j.crear_vocacion_con_ramas_desde_dict(datos_vocacion_ia)
@@ -703,6 +821,12 @@ if __name__ == "__main__":
         if voc1:
             print(f"\n--- Rama de Cursos para Vocación '{voc1['nombre']}' ---")
             for c_rama in gestor_neo4j.obtener_rama_cursos_por_vocacion(voc1['nombre']): print(c_rama)
+        """
+        for v in gestor_neo4j.obtener_vocaciones():
+            print(f"\n--- Rama de Cursos para Vocación '{v['nombre']}' ---")
+            for c_rama in gestor_neo4j.obtener_rama_cursos_por_vocacion(v['nombre']):
+                print(f"  {c_rama['nivel_en_rama']}: {c_rama['nombre']} ({c_rama['dificultad']})")
+        """
 
         # 6. Actualizar Datos
         print("\n6. Actualizando datos...")
@@ -718,8 +842,8 @@ if __name__ == "__main__":
             if c["nombre"] == "Machine Learning con Scikit-learn": print(c)
         """
 
-        for c in gestor_neo4j.obtener_rama_cursos_por_vocacion("Ciencia de Datos"):
-            print(f"  {c['nivel_en_rama']}: {c['nombre']} ({c['dificultad']})")
+        #for c in gestor_neo4j.obtener_rama_cursos_por_vocacion("Ciencia de Datos"):
+        #    print(f"  {c['nivel_en_rama']}: {c['nombre']} ({c['dificultad']})")
         # 7. Eliminar Datos (descomentar para probar)
         # print("\n7. Eliminando datos...")
         # if curso_db: gestor_neo4j.eliminar_curso(curso_db["nombre"])

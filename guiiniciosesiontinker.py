@@ -5,35 +5,22 @@ from pymongo import MongoClient
 import bcrypt # Para verificar contraseñas hasheadas
 from datetime import datetime # Asegurar que datetime esté importado
 import Neo4jtest as neo4jcrud
-
-# --- Configuración de la Base de Datos (MongoDB) ---
-MONGO_URI = "mongodb://admin:admin123@localhost:27017/"
-DATABASE_NAME_DATA = "datos"
-COLLECTION_NAME_USUARIOS = "usuarios"
-COLLECTION_NAME_BIBLIOGRAFIAS_MONGO = "bibliografias" # Para el CRUD de bibliografías
-
+import crudbibliotest as bibliografias
+import crudusuariostest as usuarios
+import crudcursostest as cursos
 
 # --- Lógica de Backend (Login - MongoDB) ---
-def conectar_db_mongo():
-    """Establece conexión con la base de datos MongoDB."""
-    try:
-        client = MongoClient(MONGO_URI)
-        client.admin.command('ping')
-        db = client[DATABASE_NAME_DATA]
-        print(f"Conexión a MongoDB exitosa.")
-        return db
-    except Exception as e:
-        print(f"Error al conectar a MongoDB: {e}")
-        return None
 
-def verificar_login_usuario(db_mongo, username_ingresado, password_plano_ingresado):
+usuarios_crud = usuarios.UsuariosCRUD()  
+bibliografias_crud = bibliografias.BiblioCRUD() 
+cursos_crud = cursos.CursosCRUD() 
+def verificar_login_usuario(username_ingresado, password_plano_ingresado):
     """Verifica las credenciales de inicio de sesión de un usuario."""
-    if db_mongo is None:
-        return False, "Error de conexión a la base de datos.", None
     if not username_ingresado or not password_plano_ingresado:
         return False, "El nombre de usuario y la contraseña no pueden estar vacíos.", None
     try:
-        usuario_doc = db_mongo[COLLECTION_NAME_USUARIOS].find_one({"username": username_ingresado})
+        usuario_doc = usuarios_crud.leer_usuario(username_ingresado)
+        #usuario_doc = db_mongo[COLLECTION_NAME_USUARIOS].find_one({"username": username_ingresado})
         if usuario_doc is None:
             return False, "Nombre de usuario no encontrado.", None
         hashed_pw_almacenado = usuario_doc.get("password")
@@ -49,23 +36,18 @@ def verificar_login_usuario(db_mongo, username_ingresado, password_plano_ingresa
         return False, f"Error inesperado durante el inicio de sesión: {e}", None
 
 # --- Placeholder para el CRUD de Bibliografías (MongoDB) ---
-def obtener_bibliografias_por_titulos(db_mongo, lista_titulos_bibliografias):
+def obtener_bibliografias_por_titulos(lista_titulos_bibliografias):
     """
     Placeholder para buscar bibliografías en MongoDB por una lista de títulos.
     En una implementación real, buscarías en la colección 'bibliografias'.
     """
-    if db_mongo is None:
-        print("MongoBibliografiasPlaceholder: No hay conexión a la DB.")
-        return []
     if not lista_titulos_bibliografias:
         return []
         
     print(f"MongoBibliografiasPlaceholder: Buscando bibliografías con títulos: {lista_titulos_bibliografias}")
     
     # Simulación: buscar en la colección 'bibliografias' por el campo 'titulo'
-    biblios_encontradas = list(db_mongo[COLLECTION_NAME_BIBLIOGRAFIAS_MONGO].find(
-        {"titulo": {"$in": lista_titulos_bibliografias}}
-    ))
+    biblios_encontradas = bibliografias_crud.leer_bibliografias_por_titulos(lista_titulos_bibliografias)
     
     # Si no se encuentran, devolver algunas de ejemplo para la demo
     if not biblios_encontradas:
@@ -79,10 +61,9 @@ def obtener_bibliografias_por_titulos(db_mongo, lista_titulos_bibliografias):
 
 # --- Interfaz Gráfica Principal de la Aplicación ---
 class VentanaPrincipalApp:
-    def __init__(self, master, datos_usuario, db_mongo_conn):
+    def __init__(self, master, datos_usuario):
         self.master = master
         self.datos_usuario = datos_usuario
-        self.db_mongo = db_mongo_conn # Conexión a MongoDB
         self.neo4j_crud = neo4jcrud.Neo4jCRUD()
 
         master.title(f"Plataforma de Aprendizaje - Usuario: {datos_usuario['username']}")
@@ -224,78 +205,71 @@ class VentanaPrincipalApp:
         # self.tree_biblios.bind("<<TreeviewSelect>>", self._al_seleccionar_bibliografia)
 
     def _cargar_bibliografias_cursos_vocacion(self, cursos_de_vocacion):
-        # Limpiar Treeview anterior
         for i in self.tree_biblios.get_children():
             self.tree_biblios.delete(i)
 
-        # Recopilar todos los títulos de bibliografías de los cursos de la vocación
-        # y del progreso del usuario.
         titulos_biblios_a_buscar = set()
         
-        # De los cursos de la vocación (Neo4j)
-        for curso_neo4j in cursos_de_vocacion:
-            biblio_desbloqueada = curso_neo4j.get("enciclopedia_desbloqueada") # Asumiendo que este campo existe en los datos de Neo4j
-            if biblio_desbloqueada:
-                titulos_biblios_a_buscar.add(biblio_desbloqueada)
-        
-        # Del progreso del usuario (MongoDB)
-        # Necesitamos obtener los cursos del progreso y sus 'enciclopedia_desbloqueada'
-        # Esto requeriría otra consulta a la colección de cursos de MongoDB si 'progreso' solo tiene nombres de cursos.
-        # Para este ejemplo, asumiremos que 'enciclopedia_desbloqueada' de los cursos de progreso ya se conoce
-        # o que los cursos en 'progreso' son nombres de bibliografías directamente (según el último cambio).
-        
-        # Si el campo 'progreso' del usuario contiene nombres de cursos, necesitaríamos
-        # una función para obtener la 'enciclopedia_desbloqueada' de esos cursos desde MongoDB.
-        # Por simplicidad, si 'progreso' ya contiene los títulos de las bibliografías, los usamos.
-        # O, si 'progreso' son nombres de cursos, y tenemos el campo 'enciclopedia_desbloqueada' en los datos de Neo4j,
-        # podríamos cruzarlo.
-        
-        # Asumiendo que el campo 'enciclopedia_desbloqueada' en los datos de los cursos (ya sea de Neo4j o MongoDB)
-        # es el TÍTULO de la bibliografía.
-        
-        # Ejemplo: Si el usuario tiene cursos completados y esos cursos tienen un campo 'enciclopedia_desbloqueada'
-        # que es el título de un libro:
-        # cursos_completados_info = self.db_mongo[COLLECTION_NAME_CURSOS_MONGO].find({"nombre": {"$in": self.datos_usuario.get('progreso', [])}})
-        # for curso_comp in cursos_completados_info:
-        #     if curso_comp.get("enciclopedia_desbloqueada"):
-        #         titulos_biblios_a_buscar.add(curso_comp.get("enciclopedia_desbloqueada"))
+        nombres_cursos_de_vocacion = []
+        if cursos_de_vocacion: 
+            for curso_neo4j in cursos_de_vocacion:
+                nombre_curso = curso_neo4j.get("nombre")
+                if nombre_curso:
+                    nombres_cursos_de_vocacion.append(nombre_curso)
 
-        # Dado que el último cambio fue que 'enciclopedia_desbloqueada' en datos.cursos.json
-        # AHORA CONTIENE el título de la bibliografía, podemos usarlo.
-        # Vamos a asumir que los cursos en 'progreso' son nombres de cursos, y necesitamos
-        # obtener sus 'enciclopedia_desbloqueada' (títulos de libros) de la colección de cursos de MongoDB.
-        
-        nombres_cursos_progreso = self.datos_usuario.get('progreso', [])
-        if nombres_cursos_progreso and self.db_mongo:
-            # Necesitaríamos la colección de cursos de MongoDB para esto.
-            # Asumamos que se llama 'cursos' como en tus archivos JSON.
-            cursos_progreso_docs = list(self.db_mongo["cursos"].find( # Usar el nombre de la colección de cursos de MongoDB
-                {"nombre": {"$in": nombres_cursos_progreso}},
-                {"enciclopedia_desbloqueada": 1} # Solo necesitamos este campo
-            ))
-            for curso_doc in cursos_progreso_docs:
-                if curso_doc.get("enciclopedia_desbloqueada"):
-                    titulos_biblios_a_buscar.add(curso_doc.get("enciclopedia_desbloqueada"))
+        nombres_cursos_progreso_usuario = self.datos_usuario.get('progreso', [])
+        todos_nombres_cursos_relevantes = list(set(nombres_cursos_de_vocacion + nombres_cursos_progreso_usuario))
+
+        if todos_nombres_cursos_relevantes and cursos_crud:
+            try:
+                cursos_docs_mongo = cursos_crud.leer_cursos_por_nombres(todos_nombres_cursos_relevantes)
+                
+                for curso_doc in cursos_docs_mongo:
+                    biblio_desbloqueada = curso_doc.get("enciclopedia_desbloqueada")
+                    if biblio_desbloqueada:
+                        titulos_biblios_a_buscar.add(biblio_desbloqueada)
+            except AttributeError:
+                print("Error: El objeto 'cursos_crud' no tiene el método 'leer_cursos_por_nombres' o no está disponible.")
+                self.tree_biblios.insert("", tk.END, values=("Error al obtener datos de cursos.", "", ""))
+                return
+            except Exception as e:
+                print(f"Error al leer cursos de MongoDB: {e}")
+                self.tree_biblios.insert("", tk.END, values=("Error al leer cursos de MongoDB.", "", ""))
+                return
 
 
-        if titulos_biblios_a_buscar:
-            bibliografias_data = obtener_bibliografias_por_titulos(self.db_mongo, list(titulos_biblios_a_buscar))
-            if bibliografias_data:
-                for biblio in bibliografias_data:
-                    self.tree_biblios.insert("", tk.END, values=(biblio.get("titulo"), biblio.get("autor"), biblio.get("descripcion", "N/A")))
-            else:
-                self.tree_biblios.insert("", tk.END, values=("No se encontraron bibliografías para estos cursos.", "", ""))
-        else:
+        if titulos_biblios_a_buscar and bibliografias_crud:
+            try:
+                bibliografias_data = bibliografias_crud.leer_bibliografias_por_titulos(list(titulos_biblios_a_buscar))
+                
+                if bibliografias_data:
+                    for biblio in bibliografias_data:
+                        self.tree_biblios.insert("", tk.END, values=(biblio.get("titulo"), biblio.get("autor"), biblio.get("descripcion", "N/A")))
+                else:
+                    self.tree_biblios.insert("", tk.END, values=("No se encontraron bibliografías para los cursos relevantes.", "", ""))
+            except AttributeError:
+                print("Error: El objeto 'bibliografias_crud' no tiene el método 'leer_bibliografias_por_titulos' o no está disponible.")
+                self.tree_biblios.insert("", tk.END, values=("Error al obtener datos de bibliografías.", "", ""))
+                return
+            except Exception as e:
+                print(f"Error al leer bibliografías de MongoDB: {e}")
+                self.tree_biblios.insert("", tk.END, values=("Error al leer bibliografías de MongoDB.", "", ""))
+                return
+        elif not titulos_biblios_a_buscar:
             self.tree_biblios.insert("", tk.END, values=("No hay cursos con bibliografías asociadas o progreso.", "", ""))
+        elif not bibliografias_crud:
+            self.tree_biblios.insert("", tk.END, values=("Servicio de bibliografías no disponible.", "", ""))
 
 
     def _al_cerrar_ventana_principal(self):
         if messagebox.askokcancel("Salir", "¿Estás seguro de que quieres cerrar la aplicación?"):
             if self.neo4j_crud:
                 self.neo4j_crud.close()
-            if self.db_mongo is not None and self.db_mongo.client is not None: # MongoDB cierra la conexión del cliente
-                 self.db_mongo.client.close()
-                 print("Conexión a MongoDB cerrada desde VentanaPrincipalApp.")
+            if usuarios_crud is not None and bibliografias_crud is not None and cursos_crud is not None: # MongoDB cierra la conexión del cliente
+                usuarios_crud.client.close()
+                bibliografias_crud.client.close()
+                cursos_crud.client.close()
+                print("Conexión a MongoDB cerrada desde VentanaPrincipalApp.")
             self.master.destroy()
 
 
@@ -306,8 +280,6 @@ class VentanaLogin:
         master.title("Inicio de Sesión")
         master.geometry("400x300")
         master.resizable(False, False)
-
-        self.db_mongo_login = conectar_db_mongo() # Conexión específica para login
 
         style = ttk.Style()
         style.theme_use('clam')
@@ -351,12 +323,12 @@ class VentanaLogin:
         username = self.username_entry.get()
         password = self.password_entry.get()
 
-        if self.db_mongo_login is None:
+        if usuarios_crud is None:
             messagebox.showerror("Error de Conexión", "No se pudo conectar a la base de datos. Verifique la consola.")
             self.status_label_var.set("Error: Sin conexión a la DB.")
             return
 
-        exito, mensaje, datos_usuario = verificar_login_usuario(self.db_mongo_login, username, password)
+        exito, mensaje, datos_usuario = verificar_login_usuario(username, password)
 
         if exito:
             self.status_label_var.set("")
@@ -369,10 +341,9 @@ class VentanaLogin:
             
             # Crear instancias de los CRUDs (o placeholders) para la ventana principal
             # La conexión de MongoDB para la app principal puede ser la misma o una nueva
-            db_mongo_app = self.db_mongo_login # Reutilizar la conexión para la app
             
             #app_principal = VentanaPrincipalApp(ventana_app_principal_root, datos_usuario, db_mongo_app, neo4j_crud_app)
-            app_principal = VentanaPrincipalApp(ventana_app_principal_root, datos_usuario, db_mongo_app)
+            app_principal = VentanaPrincipalApp(ventana_app_principal_root, datos_usuario)
             # Asegurarse de que al cerrar la ventana principal, la aplicación termine o la de login se cierre.
             # Esto es importante si la ventana de login no es la raíz principal de Tkinter.
             # Si la ventana de login ES la raíz (root = tk.Tk()), entonces al hacer root.destroy() se cierra todo.

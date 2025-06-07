@@ -1,7 +1,7 @@
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 from datetime import datetime, date
-import bcrypt # Para el hasheo de contraseñas
+import bcrypt 
 
 COLLECTION_NAME_USUARIOS = "usuarios" 
 COLLECTION_NAME_VOCACIONES = "vocaciones" 
@@ -20,7 +20,7 @@ class UsuariosCRUD:
         try:
             salt = bcrypt.gensalt()
             hashed_pw = bcrypt.hashpw(password_texto_plano.encode('utf-8'), salt)
-            return hashed_pw # Retorna el hash binario
+            return hashed_pw 
         except Exception as e:
             print(f"Error al hashear la contraseña: {e}")
             return None
@@ -29,7 +29,6 @@ class UsuariosCRUD:
         if not isinstance(fecha_nacimiento_dt, (date, datetime)):
             raise ValueError("fecha_nacimiento_dt debe ser un objeto date o datetime.")
         hoy = datetime.today()
-        # Si es datetime, tomar solo la parte de la fecha para el cálculo
         if isinstance(fecha_nacimiento_dt, datetime):
             fecha_nacimiento_dt = fecha_nacimiento_dt.date()
             
@@ -39,8 +38,7 @@ class UsuariosCRUD:
     def validar_vocacion_existente(self, nombre_vocacion):
         """Verifica si una vocación existe en la colección de vocaciones."""
         if self.db is None:
-            return False # No se puede validar sin conexión
-        # Asumimos que la colección de vocaciones tiene documentos con un campo "nombre"
+            return False
         if self.db[COLLECTION_NAME_VOCACIONES].find_one({"nombre": nombre_vocacion}):
             return True
         return False
@@ -62,7 +60,6 @@ class UsuariosCRUD:
             print("Error: No hay conexión a la base de datos.")
             return None
 
-        # Validaciones de entrada
         if not all([username, password_plano, fecha_nacimiento, vocacion]):
             print("Error: Username, password, fecha de nacimiento y vocación son requeridos.")
             return None
@@ -73,20 +70,16 @@ class UsuariosCRUD:
             print("Error: La fecha de nacimiento debe ser un objeto date o datetime.")
             return None
         
-        # Validar que la vocación exista (opcional pero recomendado)
         if not self.validar_vocacion_existente(self.db, vocacion):
             print(f"Error: La vocación '{vocacion}' no es válida o no existe en la base de datos.")
-            # Podrías permitir el registro de todas formas o detenerlo aquí.
-            # return None # Descomentar para forzar que la vocación exista
 
-        # Verificar si el username ya existe
         if self.db[COLLECTION_NAME_USUARIOS].find_one({"username": username}):
             print(f"Error: El nombre de usuario '{username}' ya existe.")
             return None
 
         hashed_pw = self.hashear_password(password_plano)
         if hashed_pw is None:
-            return None # Error durante el hasheo
+            return None 
 
         try:
             edad = self.calcular_edad(fecha_nacimiento)
@@ -94,7 +87,6 @@ class UsuariosCRUD:
             print(f"Error al calcular edad: {ve}")
             return None
             
-        # Asegurar que fecha_nacimiento se guarde como datetime si es solo date
         if isinstance(fecha_nacimiento, date) and not isinstance(fecha_nacimiento, datetime):
             fecha_nac_dt_para_db = datetime.combine(fecha_nacimiento, datetime.min.time())
         else:
@@ -102,7 +94,7 @@ class UsuariosCRUD:
 
         usuario_doc = {
             "username": username,
-            "password": hashed_pw, # Se guarda el hash binario
+            "password": hashed_pw, 
             "fecha_nacimiento": fecha_nac_dt_para_db,
             "edad": edad,
             "vocacion": vocacion,
@@ -139,14 +131,43 @@ class UsuariosCRUD:
 
         for usuario in usuarios_encontrados:
             print(f"  ID MongoDB: {usuario['_id']}")
-            print(f"  Username: {usuario['username']}")
-            # No mostramos la contraseña hasheada por seguridad y porque es binaria.
-            # print(f"  Password Hash: {usuario['password']}") 
+            print(f"  Username: {usuario['username']}") 
             print(f"  Fecha de Nacimiento: {usuario['fecha_nacimiento'].strftime('%d/%m/%Y') if usuario.get('fecha_nacimiento') else 'N/A'}")
             print(f"  Edad: {usuario.get('edad', 'N/A')}")
             print(f"  Vocación: {usuario.get('vocacion', 'N/A')}")
             print(f"  Progreso: {', '.join(usuario.get('progreso', [])) if usuario.get('progreso') else 'Ninguno'}")
             print("-" * 20)
+
+    def leer_usuario_por_id(self, id_usuario_mongo):
+        """
+        Busca y muestra un usuario por su _id de MongoDB.
+        :param id_usuario_mongo: String o ObjectId, el _id del usuario a buscar.
+        """
+        if self.db is None:
+            print("Error: No hay conexión a la base de datos.")
+            return
+
+        try:
+            obj_id = ObjectId(id_usuario_mongo)
+        except Exception:
+            print(f"Error: El ID de usuario '{id_usuario_mongo}' no es un ObjectId válido.")
+            return
+
+        usuario = self.db[COLLECTION_NAME_USUARIOS].find_one({"_id": obj_id})
+        
+        if usuario:
+            """
+            print(f"Usuario encontrado: {usuario['username']}")
+            print(f"  ID MongoDB: {usuario['_id']}")
+            print(f"  Fecha de Nacimiento: {usuario['fecha_nacimiento'].strftime('%d/%m/%Y') if usuario.get('fecha_nacimiento') else 'N/A'}")
+            print(f"  Edad: {usuario.get('edad', 'N/A')}")
+            print(f"  Vocación: {usuario.get('vocacion', 'N/A')}")
+            print(f"  Progreso: {', '.join(usuario.get('progreso', [])) if usuario.get('progreso') else 'Ninguno'}")
+            """
+            return usuario
+        else:
+            print(f"No se encontró ningún usuario con ID '{id_usuario_mongo}'.")
+            return None
 
     def leer_usuario(self, nombre_buscado):
         """
@@ -197,12 +218,9 @@ class UsuariosCRUD:
             print("Error: No se proporcionaron datos válidos para actualizar.")
             return False
 
-        campos_set = {} # Campos para el operador $set de MongoDB
-
-        # Manejar campos especiales
+        campos_set = {} 
         if "username" in datos_para_actualizar:
             nuevo_username = datos_para_actualizar["username"]
-            # Verificar que el nuevo username no esté ya en uso por OTRO usuario
             usuario_existente = self.db[COLLECTION_NAME_USUARIOS].find_one({
                 "username": nuevo_username,
                 "_id": {"$ne": obj_id}
@@ -219,7 +237,7 @@ class UsuariosCRUD:
                 return False
             hashed_pw = self.hashear_password(nuevo_password_plano)
             if hashed_pw is None:
-                return False # Error durante el hasheo
+                return False 
             campos_set["password"] = hashed_pw
 
         if "fecha_nacimiento" in datos_para_actualizar:
@@ -229,7 +247,6 @@ class UsuariosCRUD:
                 return False
             try:
                 campos_set["edad"] = self.calcular_edad(nueva_fecha_nac)
-                # Asegurar que se guarda como datetime
                 if isinstance(nueva_fecha_nac, date) and not isinstance(nueva_fecha_nac, datetime):
                     campos_set["fecha_nacimiento"] = datetime.combine(nueva_fecha_nac, datetime.min.time())
                 else:
@@ -243,9 +260,8 @@ class UsuariosCRUD:
             if not isinstance(nueva_vocacion, str) or not nueva_vocacion:
                 print("Error: La nueva vocación no puede estar vacía y debe ser un string.")
                 return False
-            if not self.validar_vocacion_existente(self.db, nueva_vocacion): # Opcional
+            if not self.validar_vocacion_existente(self.db, nueva_vocacion):
                 print(f"Advertencia: La vocación '{nueva_vocacion}' no está en la lista de vocaciones válidas.")
-                # Podrías decidir si permitirlo o no.
             campos_set["vocacion"] = nueva_vocacion
 
         if "progreso" in datos_para_actualizar:
@@ -255,7 +271,6 @@ class UsuariosCRUD:
                 return False
             campos_set["progreso"] = nuevo_progreso
         
-        # Añadir otros campos directamente si no requieren lógica especial
         for key, value in datos_para_actualizar.items():
             if key not in ["username", "password", "fecha_nacimiento", "vocacion", "progreso", "_id", "edad"]:
                 campos_set[key] = value

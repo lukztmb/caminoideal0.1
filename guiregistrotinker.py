@@ -10,9 +10,8 @@ import tkinter as tk
 
 def conectar_db():
     try:
-        # Ajusta la URI de conexión si es necesario
         cli = MongoClient("mongodb://admin:admin123@localhost:27017/")
-        cli.admin.command('ping') # Verificar conexión
+        cli.admin.command('ping')
         db = cli["datos"]
         return db
     except Exception as e:
@@ -29,7 +28,7 @@ def calcular_edad(fecha_nacimiento_dt):
 def hashear_password(password_texto_plano):
     salt = bcrypt.gensalt()
     hashed_pw = bcrypt.hashpw(password_texto_plano.encode('utf-8'), salt)
-    return hashed_pw # Guardar esto como binario en MongoDB o convertir a string si es necesario
+    return hashed_pw 
 
 def registrar_usuario_db(username, password_plano, fecha_nac_dt, vocacion_seleccionada):
     cliaux = MongoClient("mongodb://admin:admin123@localhost:27017/")
@@ -37,11 +36,9 @@ def registrar_usuario_db(username, password_plano, fecha_nac_dt, vocacion_selecc
     if dbusuarios is None:
         return False, "Error de conexión a la base de datos."
 
-    # Validaciones básicas (puedes expandirlas)
     if not all([username, password_plano, fecha_nac_dt, vocacion_seleccionada]):
         return False, "Todos los campos son requeridos."
 
-    # Verificar si el usuario ya existe
     if dbusuarios["usuarios"].find_one({"username": username}):
         return False, f"El nombre de usuario '{username}' ya existe."
 
@@ -51,11 +48,11 @@ def registrar_usuario_db(username, password_plano, fecha_nac_dt, vocacion_selecc
 
         usuario_doc = {
             "username": username,
-            "password": hashed_pw, # Se guarda el hash binario
+            "password": hashed_pw, 
             "fecha_nacimiento": fecha_nac_dt,
             "edad": edad,
             "vocacion": vocacion_seleccionada,
-            "progreso": [] # Inicialmente vacío
+            "progreso": []
         }
 
         dbusuarios["usuarios"].insert_one(usuario_doc)
@@ -67,9 +64,9 @@ class VentanaRegistro:
     def __init__(self, master):
         self.master = master
         master.title("Registro de Nuevo Usuario")
-        master.geometry("450x450") # Ajusta el tamaño
+        master.geometry("450x450") 
 
-        self.db = conectar_db() # Conectar a la DB al iniciar
+        self.db = conectar_db()
 
         # Configurar estilo ttk widgets
         style = ttk.Style()
@@ -97,7 +94,6 @@ class VentanaRegistro:
                                          foreground='white', borderwidth=2, date_pattern='dd/mm/yyyy',
                                          maxdate=datetime.today()) # Evitar fechas futuras
         self.fecha_nac_entry.grid(row=2, column=1, padx=5, pady=5, sticky="ew")
-        # Limpiar el campo de fecha inicialmente para que el usuario deba seleccionar una.
         self.fecha_nac_entry.delete(0, tk.END) 
         self.fecha_nac_entry.bind("<<DateEntrySelected>>", self.actualizar_edad_display)
 
@@ -144,28 +140,26 @@ class VentanaRegistro:
         try:
             fecha_seleccionada_obj_date = self.fecha_nac_entry.get_date() 
             if isinstance(fecha_seleccionada_obj_date, date):
-                 # Aquí fecha_seleccionada_obj_date es un objeto datetime.date
                  edad = calcular_edad(fecha_seleccionada_obj_date) 
                  self.edad_label_var.set(str(edad))
             else: 
                  self.edad_label_var.set("N/A")
         except Exception as e:
-            # print(f"Error al actualizar edad: {e}") 
             self.edad_label_var.set("N/A") 
 
     def intentar_registro(self):
         username = self.username_entry.get()
         password = self.password_entry.get()
         vocacion = self.vocacion_var.get()
-        fecha_nac_str = self.fecha_nac_entry.get() # Obtener el string para verificar si está vacío
+        fecha_nac_str = self.fecha_nac_entry.get() 
 
-        if not fecha_nac_str: # Verificar si el campo de fecha está vacío
+        if not fecha_nac_str:
             messagebox.showerror("Error de Fecha", "Por favor, seleccione una fecha de nacimiento.")
             self.status_label_var.set("Error: Fecha de nacimiento no seleccionada.")
             return
             
         try:
-            fecha_nac_obj_date = self.fecha_nac_entry.get_date() # Intenta obtener el objeto date
+            fecha_nac_obj_date = self.fecha_nac_entry.get_date() 
             if not isinstance(fecha_nac_obj_date, date): 
                 messagebox.showerror("Error de Fecha", "Por favor, seleccione una fecha de nacimiento válida desde el calendario.")
                 self.status_label_var.set("Error: Fecha de nacimiento inválida.")
@@ -197,7 +191,7 @@ class VentanaRegistro:
             self.status_label_var.set(mensaje)
             self.username_entry.delete(0, tk.END)
             self.password_entry.delete(0, tk.END)
-            self.fecha_nac_entry.delete(0, tk.END) # Limpiar DateEntry
+            self.fecha_nac_entry.delete(0, tk.END) 
             self.edad_label_var.set("N/A")
             if self.vocacion_combobox['values'] and self.vocacion_combobox['values'][0] not in ["(No hay vocaciones)", "(Error DB)"]:
                  self.vocacion_combobox.current(0)
@@ -205,7 +199,6 @@ class VentanaRegistro:
             messagebox.showerror("Error de Registro", mensaje)
             self.status_label_var.set(f"Error: {mensaje}")
 
-# Paso 5: Script Principal para Ejecutar la Aplicación
 def main_gui():
     root = tk.Tk()
     app = VentanaRegistro(root)

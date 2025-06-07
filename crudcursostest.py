@@ -15,7 +15,6 @@ class CursosCRUD:
         
     def crear_curso(self, id_neo4j, nombre, descripcion, nivel, temas, prerrequisitos, enciclopedia_desbloqueada):
         """Crea un nuevo curso en la base de datos."""
-        # Validación básica de campos
         if not all([id_neo4j, nombre, descripcion, nivel, enciclopedia_desbloqueada]):
             print("Error: Los campos 'id_neo4j', 'nombre', 'descripcion', 'nivel' y 'enciclopedia_desbloqueada' son requeridos.")
             return None
@@ -31,8 +30,8 @@ class CursosCRUD:
             "nombre": nombre,
             "descripcion": descripcion,
             "nivel": nivel,
-            "temas": temas,  # Debe ser una lista de strings
-            "prerrequisitos": prerrequisitos,  # Debe ser una lista de strings
+            "temas": temas,  
+            "prerrequisitos": prerrequisitos, 
             "enciclopedia_desbloqueada": enciclopedia_desbloqueada
         }
         try:
@@ -89,7 +88,7 @@ class CursosCRUD:
                 return True
             else:
                 print(f"Curso con ID {id_curso_mongo} encontrado, pero no se realizaron modificaciones (los datos podrían ser los mismos).")
-                return True # Consideramos éxito si se encontró aunque no haya cambios.
+                return True 
         except Exception as e:
             print(f"Error al actualizar curso con ID {id_curso_mongo}: {e}")
             return False
@@ -263,7 +262,6 @@ class CursosCRUD:
         for categoria_cursos, cursos_lista in diccionario_cursos_data.items():
             print(f"  Cargando categoría de cursos: {categoria_cursos}")
             for curso_data in cursos_lista:
-                # Verificar si el curso ya existe por id_neo4j para no duplicarlo
                 existente = self.collection.find_one({"id_neo4j": curso_data["id_neo4j"]})
                 if existente:
                     print(f"    Curso '{curso_data['nombre']}' (ID Neo4j: {curso_data['id_neo4j']}) ya existe. Omitiendo.")

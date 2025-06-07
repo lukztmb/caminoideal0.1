@@ -67,8 +67,6 @@ class Neo4jCRUD:
 
     def crear_vocacion(self, nombre):
         """Crea un nuevo nodo Vocacion."""
-        # Asegurar unicidad del nombre de la vocación (opcional, pero recomendado)
-        # Se puede agregar una constraint en Neo4j: CREATE CONSTRAINT ON (v:Vocacion) ASSERT v.nombre IS UNIQUE
         return self._ejecutar_transaccion(self._crear_vocacion_tx, nombre=nombre)
 
     @staticmethod
@@ -103,10 +101,9 @@ class Neo4jCRUD:
 
     @staticmethod
     def _eliminar_vocacion_tx(tx, nombre):
-        # Elimina la vocación y sus relaciones TIENE_CURSO. Los cursos no se eliminan.
         query = (
             "MATCH (v:Vocacion {nombre: $nombre}) "
-            "DETACH DELETE v" # DETACH DELETE elimina el nodo y todas sus relaciones
+            "DETACH DELETE v" 
         )
         summary = tx.run(query, nombre=nombre).consume()
         if summary.counters.nodes_deleted > 0:
@@ -125,7 +122,6 @@ class Neo4jCRUD:
         query = "MERGE (v:Vocacion {nombre: $nombre}) RETURN id(v) AS id, v.nombre AS nombre"
         result = tx.run(query, nombre=nombre).single()
         if result:
-            # print(f"Vocación '{result['nombre']}' procesada/encontrada con ID interno: {result['id']}.")
             return {"id_interno_neo4j": result["id"], "nombre": result["nombre"]}
         raise Exception(f"No se pudo crear o encontrar la vocación '{nombre}'.")
 
@@ -142,7 +138,6 @@ class Neo4jCRUD:
 
     def crear_curso(self, nombre, dificultad):
         """Crea un nuevo nodo Curso."""
-        # Se puede agregar una constraint en Neo4j: CREATE CONSTRAINT ON (c:Curso) ASSERT c.nombre IS UNIQUE
         return self._ejecutar_transaccion(self._crear_curso_tx, nombre=nombre, dificultad=dificultad)
 
     @staticmethod
@@ -196,7 +191,6 @@ class Neo4jCRUD:
 
     @staticmethod
     def _eliminar_curso_tx(tx, nombre):
-        # Elimina el curso y TODAS sus relaciones (TIENE_CURSO, PRECEDE_A)
         query = (
             "MATCH (c:Curso {nombre: $nombre}) "
             "DETACH DELETE c"
@@ -215,16 +209,14 @@ class Neo4jCRUD:
     
     @staticmethod
     def _crear_o_encontrar_curso_tx(tx, nombre, dificultad):
-        # MERGE en el nombre, ON CREATE establece la dificultad, ON MATCH la actualiza si es diferente (opcional)
         query = (
             "MERGE (c:Curso {nombre: $nombre}) "
             "ON CREATE SET c.dificultad = $dificultad "
-            "ON MATCH SET c.dificultad = $dificultad " # Actualiza dificultad si el curso ya existe
+            "ON MATCH SET c.dificultad = $dificultad " 
             "RETURN id(c) AS id, c.nombre AS nombre, c.dificultad AS dificultad"
         )
         result = tx.run(query, nombre=nombre, dificultad=dificultad).single()
         if result:
-            # print(f"Curso '{result['nombre']}' (Dificultad: {result['dificultad']}) procesado/encontrado con ID interno: {result['id']}.")
             return {"id_interno_neo4j": result["id"], "nombre": result["nombre"], "dificultad": result["dificultad"]}
         raise Exception(f"No se pudo crear o encontrar el curso '{nombre}'.")
 
@@ -234,7 +226,7 @@ class Neo4jCRUD:
         query = (
             "MATCH (v:Vocacion {nombre: $nombre_vocacion}) "
             "MATCH (c:Curso {nombre: $nombre_curso}) "
-            "MERGE (v)-[r:TIENE_CURSO]->(c) " # MERGE para evitar duplicados de relación
+            "MERGE (v)-[r:TIENE_CURSO]->(c) " 
             "RETURN type(r) AS tipo_relacion"
         )
         result = tx.run(query, nombre_vocacion=nombre_vocacion, nombre_curso=nombre_curso)
@@ -271,7 +263,7 @@ class Neo4jCRUD:
         """Crea una relación PRECEDE_A entre dos cursos."""
         return self._ejecutar_transaccion(self._vincular_curso_a_curso_tx, nombre_curso_origen=nombre_curso_origen, nombre_curso_destino=nombre_curso_destino)
 
-    # --- Funciones de Consulta Específicas ---
+    # --- Consultas Especializadas ---
     @staticmethod
     def _obtener_cursos_por_dificultad_tx(tx, dificultad):
         query = (
@@ -287,7 +279,6 @@ class Neo4jCRUD:
 
     @staticmethod
     def _obtener_cursos_siguientes_tx(tx, nombre_curso_actual):
-        # Cursos a los que PRECEDE_A el curso actual
         query = (
             "MATCH (c_actual:Curso {nombre: $nombre_curso_actual})-[:PRECEDE_A]->(c_siguiente:Curso) "
             "RETURN id(c_siguiente) AS id, c_siguiente.nombre AS nombre, c_siguiente.dificultad AS dificultad ORDER BY c_siguiente.nombre"
@@ -301,7 +292,6 @@ class Neo4jCRUD:
 
     @staticmethod
     def _obtener_cursos_anteriores_tx(tx, nombre_curso_actual):
-        # Cursos que PRECEDEN_A el curso actual o Vocaciones que lo TIENEN_CURSO
         query = (
             "MATCH (nodo_anterior)-[r:PRECEDE_A|TIENE_CURSO]->(c_actual:Curso {nombre: $nombre_curso_actual}) "
             "RETURN id(nodo_anterior) AS id, labels(nodo_anterior)[0] AS tipo_nodo, nodo_anterior.nombre AS nombre, "
@@ -330,19 +320,16 @@ class Neo4jCRUD:
             print("Error: No hay conexión activa a Neo4j.")
             return None
 
-        # Función interna que se ejecutará dentro de la transacción
         def _tx_crear_estructura_completa(tx, datos_voc):
             vocacion_nombre = datos_voc.get("vocacion_nombre")
             if not vocacion_nombre:
                 raise ValueError("El diccionario debe contener 'vocacion_nombre'.")
 
-            # 1. Crear o encontrar la Vocacion
             voc_result = Neo4jCRUD._crear_o_encontrar_vocacion_tx(tx, vocacion_nombre)
             print(f"Procesando Vocación: '{voc_result['nombre']}'")
 
             cursos_creados_info = []
 
-            # Función recursiva interna para procesar cursos y sus sub-ramas
             def _procesar_cursos_recursivo(tx_inner, nombre_nodo_padre_actual, tipo_nodo_padre, lista_cursos_hijos_data):
                 for curso_data_actual in lista_cursos_hijos_data:
                     nombre_curso = curso_data_actual.get("nombre")
@@ -351,13 +338,11 @@ class Neo4jCRUD:
                     if not nombre_curso or not dificultad_curso:
                         print(f"  Advertencia: Datos incompletos para un curso bajo '{nombre_nodo_padre_actual}'. Omitiendo.")
                         continue
-                    
-                    # 2. Crear o encontrar el Curso
+
                     curso_result = Neo4jCRUD._crear_o_encontrar_curso_tx(tx_inner, nombre_curso, dificultad_curso)
                     print(f"  Procesando Curso: '{curso_result['nombre']}' (Dificultad: {dificultad_curso})")
                     cursos_creados_info.append(curso_result)
 
-                    # 3. Vincular nodo padre al curso actual
                     if tipo_nodo_padre == "Vocacion":
                         if Neo4jCRUD._vincular_vocacion_a_curso_tx(tx_inner, nombre_nodo_padre_actual, nombre_curso):
                             print(f"    Relación: Vocación '{nombre_nodo_padre_actual}' --TIENE_CURSO--> Curso '{nombre_curso}'")
@@ -369,12 +354,10 @@ class Neo4jCRUD:
                         else:
                             print(f"    Advertencia: No se pudo vincular Curso '{nombre_nodo_padre_actual}' a Curso '{nombre_curso}'. ¿Nodos existen?")
                     
-                    # 4. Procesar recursivamente los cursos siguientes
                     cursos_siguientes_data = curso_data_actual.get("siguientes", [])
                     if cursos_siguientes_data:
                         _procesar_cursos_recursivo(tx_inner, nombre_curso, "Curso", cursos_siguientes_data)
             
-            # Iniciar el procesamiento recursivo para los cursos de primer nivel de la vocación
             cursos_rama_data = datos_voc.get("cursos_rama", [])
             _procesar_cursos_recursivo(tx, vocacion_nombre, "Vocacion", cursos_rama_data)
             
@@ -385,7 +368,6 @@ class Neo4jCRUD:
                 "status": "Estructura de vocación y cursos procesada."
             }
 
-        # Ejecutar la función transaccional
         with self._driver.session(database=self._database) as session:
             try:
                 resultado = session.execute_write(_tx_crear_estructura_completa, datos_voc=datos_vocacion_completa)
@@ -411,6 +393,87 @@ class Neo4jCRUD:
 
     def obtener_rama_cursos_por_vocacion(self, nombre_vocacion):
         return self._ejecutar_lectura(self._obtener_rama_cursos_por_vocacion_tx, nombre_vocacion=nombre_vocacion)
+    
+    @staticmethod
+    def _obtener_cursos_directos_por_vocacion_tx(tx, nombre_vocacion):
+        """Función transaccional para obtener cursos directamente relacionados con una vocación."""
+        query = (
+            "MATCH (v:Vocacion {nombre: $nombre_vocacion})-[:TIENE_CURSO]->(c:Curso) "
+            "RETURN id(c) AS id, c.nombre AS nombre, c.dificultad AS dificultad "
+            "ORDER BY c.nombre"
+        )
+        results = tx.run(query, nombre_vocacion=nombre_vocacion)
+        return [
+            {"id_interno_neo4j": record["id"], "nombre": record["nombre"], "dificultad": record["dificultad"]}
+            for record in results
+        ]
+
+    def obtener_cursos_directos_por_vocacion(self, nombre_vocacion):
+        """
+        Retorna solo los cursos que están directamente relacionados a una vocación
+        (los cursos iniciales de cada rama).
+        """
+        print(f"\nBuscando cursos directamente relacionados con la vocación: '{nombre_vocacion}'...")
+        return self._ejecutar_lectura(self._obtener_cursos_directos_por_vocacion_tx, nombre_vocacion=nombre_vocacion)
+
+    @staticmethod
+    def _obtener_cursos_siguientes_de_lista_tx(tx, nombres_cursos_actuales):
+        """Función transaccional para obtener el siguiente nivel de cursos desde una lista."""
+        query = (
+            "UNWIND $nombres_cursos AS nombre_curso_actual "
+            "MATCH (:Curso {nombre: nombre_curso_actual})-[:PRECEDE_A]->(c_siguiente:Curso) "
+            "WITH c_siguiente "
+            "RETURN DISTINCT id(c_siguiente) AS id, c_siguiente.nombre AS nombre, c_siguiente.dificultad AS dificultad "
+            "ORDER BY nombre"
+        )
+        results = tx.run(query, nombres_cursos=nombres_cursos_actuales)
+        return [
+            {"id_interno_neo4j": record["id"], "nombre": record["nombre"], "dificultad": record["dificultad"]}
+            for record in results
+        ]
+
+    def obtener_cursos_siguientes_de_lista(self, nombres_cursos_actuales):
+        """
+        Retorna solo los cursos un nivel de rama por encima (siguientes) 
+        de los cursos en la lista de nombres recibida. Sin duplicados.
+        """
+        print(f"\nBuscando cursos siguientes a: {nombres_cursos_actuales}...")
+        return self._ejecutar_lectura(self._obtener_cursos_siguientes_de_lista_tx, nombres_cursos_actuales=nombres_cursos_actuales)
+
+    @staticmethod
+    def _obtener_rama_predecesora_completa_tx(tx, nombres_cursos_actuales):
+        """
+        Función transaccional para obtener todos los nodos predecesores
+        de una lista de cursos.
+        """
+        query = (
+            "UNWIND $nombres_cursos AS nombre_curso_actual "
+            "MATCH (c_actual:Curso {nombre: nombre_curso_actual}) "
+            "MATCH path = (predecesor)-[:TIENE_CURSO|PRECEDE_A*]->(c_actual) "
+            "UNWIND nodes(path) AS nodo_en_rama "
+            "WITH DISTINCT nodo_en_rama "
+            "RETURN id(nodo_en_rama) AS id, labels(nodo_en_rama)[0] AS tipo_nodo, nodo_en_rama.nombre AS nombre, "
+            "CASE WHEN 'Curso' IN labels(nodo_en_rama) THEN nodo_en_rama.dificultad ELSE NULL "
+            "END AS dificultad "
+            "ORDER BY tipo_nodo DESC, nombre "
+        )
+        results = tx.run(query, nombres_cursos=nombres_cursos_actuales)
+        nodos_predecesores = []
+        for record in results:
+            data = {"id_interno_neo4j": record["id"], "tipo_nodo": record["tipo_nodo"], "nombre": record["nombre"]}
+            if record["tipo_nodo"] == "Curso":
+                data["dificultad"] = record["dificultad"]
+            nodos_predecesores.append(data)
+        return nodos_predecesores
+
+    def obtener_rama_predecesora_completa(self, nombres_cursos_actuales):
+        """
+        Retorna toda la rama de cursos y vocaciones predecesores (más cercanos al inicio)
+        de los cursos en la lista de nombres recibida. Sin duplicados.
+        """
+        print(f"\nBuscando la rama predecesora completa de: {nombres_cursos_actuales}...")
+        return self._ejecutar_lectura(self._obtener_rama_predecesora_completa_tx, nombres_cursos_actuales=nombres_cursos_actuales)
+        
 
 
 if __name__ == "__main__":
@@ -693,27 +756,29 @@ if __name__ == "__main__":
             }
         ]
 
-        #if gestor_neo4j._driver:
-        #    try:
-        #        with gestor_neo4j._driver.session() as s:
-        #            s.run("CREATE CONSTRAINT vocacion_nombre_unique IF NOT EXISTS FOR (v:Vocacion) REQUIRE v.nombre IS UNIQUE")
-        #            s.run("CREATE CONSTRAINT curso_nombre_unique IF NOT EXISTS FOR (c:Curso) REQUIRE c.nombre IS UNIQUE")
-        #            print("Constraints de unicidad para Vocacion.nombre y Curso.nombre aseguradas.")
-        #    except Exception as e_constraint:
-        #        print(f"Advertencia al crear constraints (pueden ya existir o error de permisos): {e_constraint}")
-
-        #    for vocacion_data in datos_para_carga_masiva_neo4j:
-        #        print(f"\n--- Cargando Vocación: {vocacion_data['vocacion_nombre']} ---")
-        #        resultado = gestor_neo4j.crear_vocacion_con_ramas_desde_dict(vocacion_data)
-        #        if resultado:
-        #            print(f"Carga para '{vocacion_data['vocacion_nombre']}' completada con estado: {resultado.get('status')}")
-        #        else:
-        #            print(f"Error al cargar la vocación: {vocacion_data['vocacion_nombre']}")
-        #            gestor_neo4j.close()
-        #else:
-        #    print("No se pudo conectar a Neo4j para la carga masiva.")
-
+        #Carga masiva de datos
         """
+        if gestor_neo4j._driver:
+            try:
+                with gestor_neo4j._driver.session() as s:
+                    s.run("CREATE CONSTRAINT vocacion_nombre_unique IF NOT EXISTS FOR (v:Vocacion) REQUIRE v.nombre IS UNIQUE")
+                    s.run("CREATE CONSTRAINT curso_nombre_unique IF NOT EXISTS FOR (c:Curso) REQUIRE c.nombre IS UNIQUE")
+                    print("Constraints de unicidad para Vocacion.nombre y Curso.nombre aseguradas.")
+            except Exception as e_constraint:
+                print(f"Advertencia al crear constraints (pueden ya existir o error de permisos): {e_constraint}")
+
+            for vocacion_data in datos_para_carga_masiva_neo4j:
+                print(f"\n--- Cargando Vocación: {vocacion_data['vocacion_nombre']} ---")
+                resultado = gestor_neo4j.crear_vocacion_con_ramas_desde_dict(vocacion_data)
+                if resultado:
+                    print(f"Carga para '{vocacion_data['vocacion_nombre']}' completada con estado: {resultado.get('status')}")
+                else:
+                    print(f"Error al cargar la vocación: {vocacion_data['vocacion_nombre']}")
+                    gestor_neo4j.close()
+        else:
+            print("No se pudo conectar a Neo4j para la carga masiva.")
+
+       
         print(f"\nIntentando crear la vocación y ramas para: '{datos_vocacion_ia['vocacion_nombre']}'")
         resultado_creacion = gestor_neo4j.crear_vocacion_con_ramas_desde_dict(datos_vocacion_ia)
 
@@ -857,4 +922,4 @@ if __name__ == "__main__":
 
         # Cerrar la conexión
         gestor_neo4j.close()
-        print("\n--- Demo Finalizada ---")
+        #print("\n--- Demo Finalizada ---")

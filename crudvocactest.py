@@ -1,9 +1,6 @@
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 
-# Configuración de la conexión a MongoDB
-# Asegúrate de que MongoDB esté corriendo y accesible.
-# Modifica la URI de conexión si es necesario (usuario, contraseña, host, puerto).
 conexion = "mongodb://admin:admin123@localhost:27017/"
 datos = "datos"
 coleccion = "vocaciones"
@@ -12,7 +9,7 @@ def conectar_db():
     """Establece conexión con la base de datos MongoDB."""
     try:
         client = MongoClient(conexion)
-        client.admin.command('ping')  # Verificar la conexión
+        client.admin.command('ping')  
         db = client[datos]
         print(f"Conexión a MongoDB ('{datos}') exitosa.")
         return db
@@ -28,7 +25,7 @@ def crear_vocacion(db, nombre_vocacion, categorias_vocacion):
     :param categorias_vocacion: Lista de strings, las categorías asociadas.
     :return: El ID del documento insertado o None si hay error.
     """
-    if db is None: # Modificado aquí
+    if db is None: 
         print("Error: No hay conexión a la base de datos.")
         return None
     if not nombre_vocacion or not isinstance(nombre_vocacion, str):
@@ -38,7 +35,6 @@ def crear_vocacion(db, nombre_vocacion, categorias_vocacion):
         print("Error: Las categorías deben ser una lista de strings.")
         return None
 
-    # Verificar si la vocación ya existe por nombre
     if db[coleccion].find_one({"nombre": nombre_vocacion}):
         print(f"Error: La vocación '{nombre_vocacion}' ya existe.")
         return None
@@ -61,7 +57,7 @@ def leer_vocaciones(db, filtro=None):
     :param db: Objeto de la base de datos MongoDB.
     :param filtro: Diccionario opcional para filtrar los resultados (ej: {"nombre": "Tecnología"}).
     """
-    if db is None: # Modificado aquí
+    if db is None: 
         print("Error: No hay conexión a la base de datos.")
         return
 
@@ -90,7 +86,7 @@ def actualizar_vocacion(db, id_vocacion_mongo, datos_para_actualizar):
                                   Ej: {"nombre": "Nuevo Nombre", "categorias": ["CatNueva1"]}
     :return: True si la actualización fue exitosa (o no se necesitaron cambios), False si hubo un error.
     """
-    if db is None: # Modificado aquí
+    if db is None: 
         print("Error: No hay conexión a la base de datos.")
         return False
 
@@ -104,11 +100,10 @@ def actualizar_vocacion(db, id_vocacion_mongo, datos_para_actualizar):
         print("Error: No se proporcionaron datos válidos para actualizar o el formato es incorrecto.")
         return False
 
-    # Opcional: Validar que el nuevo nombre no exista ya en otra vocación (si el nombre es único)
     if "nombre" in datos_para_actualizar:
         vocacion_existente = db[coleccion].find_one({
             "nombre": datos_para_actualizar["nombre"],
-            "_id": {"$ne": obj_id} # Excluir el documento actual de la búsqueda
+            "_id": {"$ne": obj_id} 
         })
         if vocacion_existente:
             print(f"Error: Ya existe otra vocación con el nombre '{datos_para_actualizar['nombre']}'.")
@@ -139,7 +134,7 @@ def eliminar_vocacion(db, id_vocacion_mongo):
     :param id_vocacion_mongo: String o ObjectId, el _id de la vocación a eliminar.
     :return: True si la eliminación fue exitosa, False en caso contrario.
     """
-    if db is None: # Modificado aquí
+    if db is None: 
         print("Error: No hay conexión a la base de datos.")
         return False
 
@@ -182,7 +177,7 @@ def obtener_vocaciones_para_dropdown():
 if __name__ == "__main__":
     db_conn = conectar_db()
 
-    if db_conn is not None: # Modificado aquí
+    if db_conn is not None:
         print("\n--- DEMO CRUD VOCACIONES ---")
         """
         # 1. Crear nuevas vocaciones

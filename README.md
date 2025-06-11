@@ -44,6 +44,11 @@ a.  Cree un entorno virtual en la raíz del proyecto:
 ```bash
 python -m venv venv
 ```
+Nota: Asegúrese de activar el entorno virtual antes de ejecutar los archivos
+
+```bash
+venv/Scripts/activate
+```
    
 b.  Instala todas las dependencias de Python necesarias ejecutando el siguiente comando en la raíz del proyecto:
 

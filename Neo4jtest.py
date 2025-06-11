@@ -495,11 +495,11 @@ if __name__ == "__main__":
 
         datos_para_carga_masiva_neo4j = [
             {
-                "vocacion_nombre": "Ingeniería de Software", # De datos.vocaciones.json
+                "vocacion_nombre": "Ingeniería de Software", 
                 "cursos_rama": [
                     {
-                        "nombre": "Introducción al Desarrollo Web: HTML, CSS y JavaScript", # De datos.cursos.json
-                        "dificultad": "Principiante", # De datos.cursos.json (nivel)
+                        "nombre": "Introducción al Desarrollo Web: HTML, CSS y JavaScript", 
+                        "dificultad": "Principiante", 
                         "siguientes": [
                             {
                                 "nombre": "Desarrollo de Interfaces con React.js",
@@ -530,7 +530,7 @@ if __name__ == "__main__":
                 ]
             },
             {
-                "vocacion_nombre": "Especialista en Ciberseguridad", # De datos.vocaciones.json
+                "vocacion_nombre": "Especialista en Ciberseguridad",
                 "cursos_rama": [
                     {
                         "nombre": "Introducción a la Ciberseguridad",
@@ -544,7 +544,6 @@ if __name__ == "__main__":
                                 "nombre": "Cloud Computing con AWS: Fundamentos y Servicios Clave",
                                 "dificultad": "Principiante",
                                 "siguientes": [
-                                    # Podría ir un curso de "Seguridad Avanzada en AWS"
                                 ]
                             }
                         ]
@@ -556,7 +555,7 @@ if __name__ == "__main__":
                 ]
             },
             {
-                "vocacion_nombre": "Diseño Gráfico", # De datos.vocaciones.json
+                "vocacion_nombre": "Diseño Gráfico", 
                 "cursos_rama": [
                     {
                         "nombre": "Fundamentos del Diseño de Experiencia de Usuario (UX)",
@@ -576,13 +575,13 @@ if __name__ == "__main__":
                         "dificultad": "Principiante"
                     },
                     {
-                        "nombre": "Ilustración Digital y Concept Art para Videojuegos y Cine", # Vocación relacionada
-                        "dificultad": "Intermedio" # Asumiendo que existe un curso con este nombre
+                        "nombre": "Ilustración Digital y Concept Art para Videojuegos y Cine", 
+                        "dificultad": "Intermedio" 
                     }
                 ]
             },
             {
-                "vocacion_nombre": "Marketing Digital", # De datos.vocaciones.json
+                "vocacion_nombre": "Marketing Digital", 
                 "cursos_rama": [
                     {
                         "nombre": "Marketing Digital Integral: SEO, SEM y Redes Sociales",
@@ -593,7 +592,7 @@ if __name__ == "__main__":
                                 "dificultad": "Intermedio"
                             },
                             {
-                                "nombre": "Fundamentos del Diseño de Experiencia de Usuario (UX)", # Para entender al cliente
+                                "nombre": "Fundamentos del Diseño de Experiencia de Usuario (UX)", 
                                 "dificultad": "Principiante"
                             }
                         ]
@@ -601,7 +600,7 @@ if __name__ == "__main__":
                 ]
             },
             {
-                "vocacion_nombre": "Aprender programación desde cero", # De datos.vocaciones.json
+                "vocacion_nombre": "Aprender programación desde cero", 
                 "cursos_rama": [
                     {
                         "nombre": "Introducción al Desarrollo Web: HTML, CSS y JavaScript",
@@ -621,13 +620,13 @@ if __name__ == "__main__":
                         "dificultad": "Intermedio"
                     },
                     {
-                        "nombre": "Desarrollo de Videojuegos 2D con Unity", # Otra opción para aprender programación
+                        "nombre": "Desarrollo de Videojuegos 2D con Unity", 
                         "dificultad": "Principiante"
                     }
                 ]
             },
             {
-                "vocacion_nombre": "Desarrollo de Videojuegos Indie", # De datos.vocaciones.json
+                "vocacion_nombre": "Desarrollo de Videojuegos Indie", 
                 "cursos_rama": [
                     {
                         "nombre": "Desarrollo de Videojuegos 2D con Unity",
@@ -644,13 +643,13 @@ if __name__ == "__main__":
                         ]
                     },
                     {
-                        "nombre": "Animación 2D y 3D para Cine y Publicidad", # Habilidad complementaria
-                        "dificultad": "Intermedio" # Asumiendo que existe un curso con este nombre
+                        "nombre": "Animación 2D y 3D para Cine y Publicidad", 
+                        "dificultad": "Intermedio" 
                     }
                 ]
             },
             {
-                "vocacion_nombre": "Ciencia de Datos", # De datos.vocaciones.json (o creado en script)
+                "vocacion_nombre": "Ciencia de Datos", 
                 "cursos_rama": [
                     {
                         "nombre": "Python para Ciencia de Datos: NumPy, Pandas y Matplotlib",
@@ -696,10 +695,10 @@ if __name__ == "__main__":
                 ]
             },
             {
-                "vocacion_nombre": "Desarrollar un emprendimiento digital", # De datos.vocaciones.json
+                "vocacion_nombre": "Desarrollar un emprendimiento digital", 
                 "cursos_rama": [
                     {
-                        "nombre": "Introducción al Desarrollo Web: HTML, CSS y JavaScript", # Base para muchos emprendimientos
+                        "nombre": "Introducción al Desarrollo Web: HTML, CSS y JavaScript", 
                         "dificultad": "Principiante",
                         "siguientes": [
                             {"nombre": "Backend con Node.js, Express y MongoDB", "dificultad": "Intermedio"}
@@ -714,23 +713,20 @@ if __name__ == "__main__":
                         "dificultad": "Todos los niveles"
                     },
                     {
-                        "nombre": "Cloud Computing con AWS: Fundamentos y Servicios Clave", # Para desplegar
+                        "nombre": "Cloud Computing con AWS: Fundamentos y Servicios Clave", 
                         "dificultad": "Principiante"
                     }
                 ]
             },
             {
-                "vocacion_nombre": "Obtener una certificación internacional (como AWS o TOEFL)", # De datos.vocaciones.json
+                "vocacion_nombre": "Obtener una certificación internacional (como AWS o TOEFL)", 
                 "cursos_rama": [
                     {
                         "nombre": "Cloud Computing con AWS: Fundamentos y Servicios Clave",
                         "dificultad": "Principiante",
                         "siguientes": [
-                            # Aquí irían cursos más avanzados de AWS si existieran en datos.cursos.json
-                            # Por ejemplo: "AWS Certified Solutions Architect - Associate"
                         ]
                     }
-                    # Para TOEFL, se necesitarían cursos de preparación de inglés específicos
                 ]
             },
             {

@@ -2,7 +2,6 @@ import tkinter as tk
 from tkinter import ttk, scrolledtext, messagebox
 from datetime import datetime
 
-# Asumiendo que estos módulos existen y tienen las clases y métodos necesarios.
 try:
     import crudvocactest as vocaciones
     import crudcursostest as cursos
@@ -15,7 +14,6 @@ except ImportError as e:
         def close(self): print(f"Cerrando placeholder CRUD {self.__class__.__name__}")
     
     vocaciones = type("vocaciones", (object,), {"VocacionesCRUD": PlaceholderCRUD})
-    # Corregido: PlaceholderGUI no estaba definido, usando PlaceholderCRUD
     cursos = type("cursos", (object,), {"CursosCRUD": PlaceholderCRUD}) 
     neo4j = type("neo4j", (object,), {"Neo4jCRUD": PlaceholderCRUD})
 
@@ -24,38 +22,31 @@ class AuraLoaderApp:
     def __init__(self, master):
         self.master = master
         master.title("Diseñador de Ramas de Aprendizaje para Neo4j")
-        master.geometry("1100x750") # Ajustado para más espacio
+        master.geometry("1100x750")
 
-        # --- Instancias de CRUD ---
         self.cursos_crud = cursos.CursosCRUD()
         self.vocaciones_crud = vocaciones.VocacionesCRUD()
-        self.neo4j_crud = None # Se instanciará al conectar
-        self.todos_los_cursos_mongo = [] # Cache para los cursos de MongoDB
+        self.neo4j_crud = None 
+        self.todos_los_cursos_mongo = []
 
-        # --- Estructura principal con Pestañas ---
         self.notebook = ttk.Notebook(master)
         self.notebook.pack(expand=True, fill=tk.BOTH, padx=5, pady=5)
 
-        # --- Pestaña 1: Conexión ---
         self.tab_conexion = ttk.Frame(self.notebook, padding=10)
         self.notebook.add(self.tab_conexion, text='Conexión')
         self._crear_widgets_conexion()
 
-        # --- Pestaña 2: Diseñador de Ramas ---
         self.tab_disenador = ttk.Frame(self.notebook, padding=10)
-        self.notebook.add(self.tab_disenador, text='Diseñador de Ramas', state="disabled") # Deshabilitada al inicio
-        self._crear_widgets_disenador() # Crear widgets pero la pestaña está deshabilitada
+        self.notebook.add(self.tab_disenador, text='Diseñador de Ramas', state="disabled") 
+        self._crear_widgets_disenador()
 
-        # --- Pestaña 3: Log de Proceso ---
         self.tab_log = ttk.Frame(self.notebook, padding=10)
         self.notebook.add(self.tab_log, text='Registro de Proceso')
         self._crear_widgets_log()
 
-        # Cargar datos iniciales de MongoDB
         self.log("Iniciando aplicación. Por favor, conéctese a Neo4j en la pestaña 'Conexión'.")
         self.master.protocol("WM_DELETE_WINDOW", self.cerrar_aplicacion)
 
-    # --- Creación de Widgets ---
 
     def _crear_widgets_conexion(self):
         self.conexion_frame_credenciales = ttk.LabelFrame(self.tab_conexion, text="Credenciales Neo4j AuraDB", padding=10)
@@ -86,42 +77,33 @@ class AuraLoaderApp:
         self.estado_label.pack()
 
     def _crear_widgets_disenador(self):
-        # Frame principal del diseñador
         designer_main_frame = ttk.Frame(self.tab_disenador)
         designer_main_frame.pack(expand=True, fill=tk.BOTH)
 
-        # Fila superior para selección de vocación
         top_frame = ttk.Frame(designer_main_frame)
         top_frame.pack(fill=tk.X, pady=(0, 10))
         ttk.Label(top_frame, text="Vocación a Cargar:", font=('Helvetica', 10, 'bold')).pack(side=tk.LEFT, padx=(0, 10))
         self.vocacion_combobox = ttk.Combobox(top_frame, state="readonly", width=40)
         self.vocacion_combobox.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
-        # PanedWindow para los dos paneles de cursos
         paned_window = tk.PanedWindow(designer_main_frame, orient=tk.HORIZONTAL)
         paned_window.pack(expand=True, fill=tk.BOTH)
 
-        # Panel izquierdo: Cursos disponibles de MongoDB
         left_panel = ttk.LabelFrame(paned_window, text="Cursos Disponibles (MongoDB)", padding=5)
-        # MODIFICADO: Cambiado 'show' a "tree headings" para que se vea el nombre del curso.
         self.cursos_disponibles_tree = ttk.Treeview(left_panel, columns=("dificultad"), show="tree headings")
         self.cursos_disponibles_tree.heading("#0", text="Nombre del Curso")
         self.cursos_disponibles_tree.heading("dificultad", text="Dificultad")
-        # MODIFICADO: Ajustado el ancho de las columnas
         self.cursos_disponibles_tree.column("#0", width=350, stretch=tk.YES)
         self.cursos_disponibles_tree.column("dificultad", width=100, anchor="center", stretch=tk.NO)
         self.cursos_disponibles_tree.pack(expand=True, fill=tk.BOTH)
-        # MODIFICADO: Aumentado el ancho inicial del panel
         paned_window.add(left_panel, width=550)
 
-        # Panel central: Controles
         controls_panel = ttk.Frame(paned_window, padding=10)
         ttk.Button(controls_panel, text=">", command=self._anadir_a_rama, width=3).pack(pady=5)
         ttk.Button(controls_panel, text="<", command=self._quitar_de_rama, width=3).pack(pady=5)
         ttk.Button(controls_panel, text="Acoplar como Siguiente", command=self._acoplar_curso).pack(pady=15)
         paned_window.add(controls_panel)
 
-        # Panel derecho: Estructura de la rama
         right_panel = ttk.LabelFrame(paned_window, text="Estructura de la Rama", padding=5)
         self.rama_builder_tree = ttk.Treeview(right_panel, columns=("dificultad"), show="tree headings")
         self.rama_builder_tree.heading("#0", text="Curso y Sub-ramas")
@@ -131,7 +113,6 @@ class AuraLoaderApp:
         self.rama_builder_tree.pack(expand=True, fill=tk.BOTH)
         paned_window.add(right_panel, width=400)
         
-        # Fila inferior para el botón de carga
         bottom_frame = ttk.Frame(designer_main_frame)
         bottom_frame.pack(fill=tk.X, pady=(10, 0))
         self.load_button = ttk.Button(bottom_frame, text="Cargar Vocación y Estructura a Neo4j", command=self.iniciar_carga)
@@ -142,8 +123,6 @@ class AuraLoaderApp:
         log_frame.pack(expand=True, fill=tk.BOTH)
         self.log_text = scrolledtext.ScrolledText(log_frame, wrap=tk.WORD, height=10)
         self.log_text.pack(fill=tk.BOTH, expand=True)
-
-    # --- Lógica de la Aplicación ---
 
     def log(self, message):
         """Añade un mensaje al área de texto de registro."""
@@ -162,7 +141,6 @@ class AuraLoaderApp:
             return
 
         self.log(f"Intentando conectar a {uri}...")
-        # Asume que el constructor de Neo4jCRUD se ha adaptado para tomar las credenciales
         self.neo4j_crud = neo4j.Neo4jCRUD() 
         if self.neo4j_crud and self.neo4j_crud._driver:
             self.estado_label.config(text=f"Conectado a {uri} (DB: {self.neo4j_crud._database})", foreground="green")
@@ -171,7 +149,6 @@ class AuraLoaderApp:
             self.uri_entry.config(state="disabled")
             self.user_entry.config(state="disabled")
             self.password_entry.config(state="disabled")
-            # Cargar datos y habilitar la pestaña del diseñador
             self._cargar_datos_disenador()
             self.notebook.tab(1, state="normal")
             self.notebook.select(self.tab_disenador)
@@ -181,7 +158,6 @@ class AuraLoaderApp:
             messagebox.showerror("Error de Conexión", "No se pudo conectar a Neo4j. Revise la consola y sus credenciales.")
 
     def _cargar_datos_disenador(self):
-        # Cargar vocaciones en el Combobox
         self.log("Obteniendo vocaciones de MongoDB...")
         vocaciones_lista = self.vocaciones_crud.leer_vocaciones()
         if vocaciones_lista:
@@ -192,7 +168,6 @@ class AuraLoaderApp:
         else:
             self.log("No se encontraron vocaciones en MongoDB.")
 
-        # Cargar cursos en el Treeview de disponibles
         self.log("Obteniendo cursos de MongoDB...")
         self.todos_los_cursos_mongo = self.cursos_crud.leer_cursos()
         for item in self.cursos_disponibles_tree.get_children():
@@ -305,7 +280,6 @@ class AuraLoaderApp:
         
         if messagebox.askyesno("Confirmar Carga", f"Se cargará la estructura para la vocación '{nombre_vocacion}' con {len(cursos_rama)} rama(s) principal(es). ¿Desea continuar?"):
             try:
-                # Asume que el CRUD de Neo4j está listo para ser usado
                 resultado = self.neo4j_crud.crear_vocacion_con_ramas_desde_dict(diccionario_final)
                 if resultado and resultado.get('status'):
                     self.log(f"Éxito: {resultado.get('status')}")

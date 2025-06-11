@@ -8,7 +8,7 @@ class CursosCRUD:
             self.client = MongoClient("mongodb://admin:admin123@localhost:27017/")
             self.db = self.client["datos"]
             self.collection = self.db["cursos"]
-            print("Conexión a MongoDB (datos) establecida.")
+            print("Conexión a MongoDB (cursos) establecida.")
         except Exception as e:
             print(f"Error al conectar a MongoDB: {e}")
             return None
@@ -48,7 +48,8 @@ class CursosCRUD:
         if self.collection.count_documents({}) == 0:
             print("No hay cursos para mostrar.")
             return
-        for curso in self.collection.find():
+        cursos = list(self.collection.find())
+        for curso in cursos:
             print(f"  ID MongoDB: {curso['_id']}")
             print(f"  ID Neo4j: {curso['id_neo4j']}")
             print(f"  Nombre: {curso['nombre']}")
@@ -58,6 +59,8 @@ class CursosCRUD:
             print(f"  Prerrequisitos: {', '.join(curso['prerrequisitos']) if curso['prerrequisitos'] else 'Ninguno'}")
             print(f"  Enciclopedia Desbloqueada: {curso['enciclopedia_desbloqueada']}")
             print("-" * 20)
+        
+        return cursos
 
     def leer_cursos_por_nombres(self, lista_nombres):
         return list(self.collection.find( 

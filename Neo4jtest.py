@@ -3,8 +3,8 @@ from neo4j import GraphDatabase, exceptions
 class Neo4jCRUD:
     def __init__(self):
         try:
-            self._driver = GraphDatabase.driver(uri = "bolt://localhost:7687", auth=("neo4j", "12345678"))
-            self._database = "vocacionescursos1"
+            self._driver = GraphDatabase.driver(uri = "neo4j+s://ec032b96.databases.neo4j.io", auth=("neo4j", "qSQTqW7Y1lh0Xeb52rKuTtFOvnFzdk02e21zfvSSzpA"))
+            self._database = "neo4j"
             self._driver.verify_connectivity()
             print("Conexión a Neo4j establecida exitosamente.")
         except exceptions.AuthError as e:
@@ -799,7 +799,7 @@ if __name__ == "__main__":
                 print(f"  Nivel {curso_en_rama['nivel_en_rama']}: {curso_en_rama['nombre']} ({curso_en_rama['dificultad']})")
         else:
             print(f"No se encontraron cursos para la vocación '{datos_vocacion_ia['vocacion_nombre']}'.")
-            
+        
         # Ejemplo de creación de otra vocación más simple
         datos_vocacion_web_simple = {
             "vocacion_nombre": "Desarrollo Web Básico",
@@ -822,6 +822,8 @@ if __name__ == "__main__":
         else:
             print("No se pudo conectar a Neo4j para la carga masiva.")
 
+    
+        
         # 1. Crear Vocaciones
         print("\n1. Creando Vocaciones...")
         voc1 = gestor_neo4j.crear_vocacion("Desarrollo Web Full-Stack")
@@ -886,12 +888,11 @@ if __name__ == "__main__":
         if voc1:
             print(f"\n--- Rama de Cursos para Vocación '{voc1['nombre']}' ---")
             for c_rama in gestor_neo4j.obtener_rama_cursos_por_vocacion(voc1['nombre']): print(c_rama)
-        """
+
         for v in gestor_neo4j.obtener_vocaciones():
             print(f"\n--- Rama de Cursos para Vocación '{v['nombre']}' ---")
             for c_rama in gestor_neo4j.obtener_rama_cursos_por_vocacion(v['nombre']):
                 print(f"  {c_rama['nivel_en_rama']}: {c_rama['nombre']} ({c_rama['dificultad']})")
-        """
 
         # 6. Actualizar Datos
         print("\n6. Actualizando datos...")
@@ -905,7 +906,6 @@ if __name__ == "__main__":
         print("\n--- Cursos después de actualizar dificultad de ML ---")
         for c in gestor_neo4j.obtener_cursos():
             if c["nombre"] == "Machine Learning con Scikit-learn": print(c)
-        """
 
         #for c in gestor_neo4j.obtener_rama_cursos_por_vocacion("Ciencia de Datos"):
         #    print(f"  {c['nivel_en_rama']}: {c['nombre']} ({c['dificultad']})")
@@ -919,7 +919,7 @@ if __name__ == "__main__":
         
         # print("\n--- Todas las Vocaciones después de eliminar 'Ciencia de Datos' ---")
         # for v in gestor_neo4j.obtener_vocaciones(): print(v)
-
+        """
         # Cerrar la conexión
         gestor_neo4j.close()
-        #print("\n--- Demo Finalizada ---")
+        print("\n--- Demo Finalizada ---")

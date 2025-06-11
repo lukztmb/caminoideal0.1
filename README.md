@@ -38,16 +38,24 @@ docker compose up -d
 c.  Verifica que el contenedor de Docker (mongo-container) esté corriendo antes de continuar con los siguientes pasos.
 
 2. Configuración del Proyecto
-a.  Instala todas las dependencias de Python necesarias ejecutando el siguiente comando en la raíz del proyecto:
+
+a.  Cree un entorno virtual en la raíz del proyecto:
+
+```bash
+python -m venv venv
+```
+   
+b.  Instala todas las dependencias de Python necesarias ejecutando el siguiente comando en la raíz del proyecto:
 
 ```bash
 pip install -r requirements.txt
 ```
-b.  Para poblar la base de datos con los datos iniciales, ejecuta el script de creación de colecciones:
+c.  Para poblar la base de datos con los datos iniciales, ejecuta el script de creación de colecciones:
 
 ```bash
 python seed_data/mongo/crear_colecciones.py
 ```
+
 ¡Y listo! Con esto, el entorno del proyecto ya está configurado y la base de datos inicializada.
 
 # Uso
